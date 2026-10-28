@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10152f">
+  <title>Maze Escape: The Algorithm Challenge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">DSALGO • ADVENTURE MODE</p><h1>Maze <span>Escape</span></h1><p class="subtitle">The Algorithm Challenge</p></div>
+    <div class="header-actions"><span class="topbar-badge">🧩 Learn by playing</span><button id="sound-btn" class="button secondary tiny" aria-pressed="false">🔇 Sound off</button></div>
+  </header>
+  <main class="layout">
+    <section class="game-column">
+      <section class="panel intro-panel"><div><h2 id="level-title">Level 1 · The First Steps</h2><p id="game-message" role="status">Find the switch, collect the key, then escape through the gate.</p></div><div class="controls-hint"><span>Move</span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><span>or</span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div></section>
+      <section class="panel settings-row">
+        <label>Difficulty<select id="difficulty"><option value="easy">Easy Explorer</option><option value="normal" selected>Maze Runner</option><option value="hard">Nightmare</option></select></label>
+        <label>Level<select id="level-select"><option value="1">Level 1</option><option value="2" disabled>Level 2 🔒</option><option value="3" disabled>Level 3 🔒</option><option value="4" disabled>Level 4 🔒</option><option value="5" disabled>Level 5 🔒</option></select></label>
+        <button id="daily-btn" class="button accent">📅 Daily Maze</button>
+      </section>
+      <section class="stats-grid" aria-label="Game statistics">
+        <div class="stat-card"><span>Score</span><strong id="score">0</strong></div><div class="stat-card"><span>Time left</span><strong id="timer">120s</strong></div><div class="stat-card"><span>Coins / Gems</span><strong id="loot">0 / 0</strong></div><div class="stat-card"><span>Moves</span><strong id="moves">0</strong></div>
+      </section>
+      <section class="panel maze-panel">
+        <div class="section-heading"><div><h2>Your maze</h2><p id="objective-text">Activate the switch ⚡ and find the key 🔑.</p></div><span id="key-status" class="status-pill">🔒 Key needed</span></div>
+        <div id="maze" class="maze" role="grid" aria-label="Maze game board"></div>
+        <div class="touch-controls" aria-label="Touch movement controls"><button class="button secondary" data-move="up" aria-label="Move up">↑</button><button class="button secondary" data-move="left" aria-label="Move left">←</button><button class="button secondary" data-move="down" aria-label="Move down">↓</button><button class="button secondary" data-move="right" aria-label="Move right">→</button></div>
+        <div class="legend"><span>🧙 Adventurer</span><span>🟡 Coin</span><span>💎 Gem</span><span>🔑 Key</span><span>⚡ Switch</span><span>🚧 Gate</span><span>🌀 Portal</span><span>👾 Enemy</span><span>🚪 Exit</span></div>
+        <div class="button-row"><button id="hint-btn" class="button secondary">🧭 Show shortest path</button><button id="animate-bfs-btn" class="button secondary">✨ Animate BFS</button><button id="undo-btn" class="button secondary">↶ Undo</button><button id="restart-btn" class="button primary">↻ Restart</button></div>
+        <div class="powerup-row"><strong>Power-ups:</strong><span id="inventory">No power-ups yet</span><button id="use-reveal-btn" class="button tiny secondary" disabled>👁 Reveal</button><button id="use-shield-btn" class="button tiny secondary" disabled>🛡 Shield</button><button id="use-boost-btn" class="button tiny secondary" disabled>⏱ Time boost</button></div>
+      </section>
+      <section class="panel"><div class="section-heading"><div><h2>Achievements</h2><p>Unlock badges as you master the maze.</p></div><span id="achievement-count" class="status-pill">0 / 8</span></div><div id="achievements" class="achievement-grid"></div></section>
+    </section>
+    <aside class="side-column">
+      <section class="panel"><div class="section-heading"><div><h2>Player profile</h2><p>Your progress is saved on this device.</p></div><span class="profile-icon">🧙</span></div><label for="player-name">Display name</label><input id="player-name" maxlength="30" placeholder="e.g. MazeMaster" autocomplete="nickname"><div class="cosmetic-row"><label for="avatar-select">Character skin<select id="avatar-select"><option value="🧙">Dungeon Wizard</option><option value="🧝" data-level="2" disabled>Elf Adventurer 🔒</option><option value="🐱" data-level="3" disabled>Lucky Cat 🔒</option><option value="🤖" data-level="4" disabled>Robot 🔒</option><option value="🦊" data-level="5" disabled>Fox 🔒</option></select></label><label for="theme-select">Maze theme<select id="theme-select"><option value="moonlight">Moonlight</option><option value="emerald" data-level="2" disabled>Emerald 🔒</option><option value="sunset" data-level="3" disabled>Sunset 🔒</option><option value="cyber" data-level="5" disabled>Cyber 🔒</option></select></label></div><div class="profile-stats"><div><span>Best score</span><strong id="best-score">0</strong></div><div><span>Wins</span><strong id="wins">0</strong></div><div><span>Unlocked level</span><strong id="unlocked-level">1</strong></div></div><p class="small-note">Progress and achievements use this browser's local storage. Online scores are submitted to Supabase after a win.</p></section>
+      <section class="panel"><div class="section-heading"><div><h2>Algorithm Lab</h2><p>See the data structures at work.</p></div></div><div class="algorithm-stat"><span>BFS cells explored</span><strong id="bfs-explored">—</strong></div><div class="algorithm-stat"><span>Shortest path</span><strong id="path-length">—</strong></div><div class="algorithm-stat"><span>Merge-sort comparisons</span><strong id="sort-comparisons">0</strong></div><div class="algorithm-stat"><span>Stack history size</span><strong id="undo-count">0</strong></div><div class="algorithm-stat"><span>Enemy path length</span><strong id="enemy-path-length">—</strong></div><p class="small-note">BFS uses a Queue (FIFO), Undo uses a Stack (LIFO), and Merge Sort ranks scores. Animated BFS colors explored cells before showing the shortest route.</p></section>
+      <section class="panel"><div class="section-heading"><div><h2>Online leaderboard</h2><p>Top scores saved in Supabase.</p></div><div class="leaderboard-actions"><button id="leaderboard-mode-btn" class="button tiny secondary">This week</button><button id="refresh-leaderboard" class="button tiny secondary">Refresh</button></div></div><p id="leaderboard-status" class="small-note" role="status">Leaderboard has not loaded yet.</p><ol id="leaderboard" class="leaderboard"></ol></section>
+      <section id="end-panel" class="panel end-panel" hidden><p class="eyebrow">RUN COMPLETE</p><h2 id="end-title">Maze escaped!</h2><p id="end-message"></p><div id="star-result" class="star-result"></div><button id="next-level-btn" class="button primary" hidden>Next level →</button><button id="play-again-btn" class="button secondary">Play again</button></section>
+    </aside>
+  </main>
+  <footer><p>Maze Escape • Data Structures and Algorithms project • Built with HTML, CSS, JavaScript & Supabase</p></footer>
+  <script type="module" src="script.js"></script>
+</body>
+</html>
