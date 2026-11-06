@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maze Escape: The Algorithm Challenge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="title-screen" class="title-screen">
+    <div class="title-card">
+      <h1>Maze Escape</h1><p class="subtitle">The Algorithm Challenge</p>
+      <div class="walker-track"><span class="walker" id="walker">🧙</span><span class="chaser">👾</span></div>
+      <p class="note">Find the switch, grab the key, dodge the monsters, and escape before time runs out.</p>
+      <div class="button-row title-actions"><button id="play-btn" class="button primary big">▶ Play</button><button id="title-daily-btn" class="button accent big">📅 Daily maze</button></div>
+      <p class="note">Arrow keys / WASD to move · Space to throw · Esc to pause</p>
+    </div>
+  </div>
+  <header class="topbar">
+    <div><h1>Maze Escape</h1><p class="subtitle">The Algorithm Challenge</p></div>
+    <div class="header-actions">
+      <button id="pause-btn" class="button secondary">⏸ Pause</button>
+      <button id="sound-btn" class="button secondary" aria-pressed="true">🔊 Effects</button>
+      <button id="music-btn" class="button secondary" aria-pressed="true">🎵 Music</button>
+      <label class="volume">Volume <input id="volume" type="range" min="0" max="100" value="50"></label>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="game-column">
+      <section class="panel">
+        <h2 id="level-title">Level 1</h2>
+        <p id="game-message" role="status">Press an arrow key or W A S D to start.</p>
+        <p id="objective-text" class="note"></p>
+        <p id="tip" class="tip" hidden></p>
+      </section>
+      <section class="stats-grid" aria-label="Game statistics">
+        <div class="stat-card"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat-card"><span>Time left</span><strong id="timer">0s</strong></div>
+        <div class="stat-card"><span>Time played</span><strong id="elapsed">0:00</strong></div>
+        <div class="stat-card"><span>Lives</span><strong id="lives">❤️❤️❤️</strong></div>
+        <div class="stat-card"><span>Coins · gems</span><strong id="loot">0/0 · 0/0</strong></div>
+        <div class="stat-card"><span>Moves</span><strong id="moves">0</strong></div>
+        <div class="stat-card"><span>Combo</span><strong id="combo">×1</strong></div>
+        <div class="stat-card"><span>Items</span><strong id="items">—</strong></div>
+      </section>
+      <section class="panel">
+        <div class="section-heading"><h2>Maze</h2><span id="key-status" class="status-pill">Key needed</span></div>
+        <div class="maze-wrap">
+          <canvas id="maze" class="maze" width="416" height="416" role="img" aria-label="Maze game board. Use arrow keys or W A S D to move."></canvas>
+          <div id="result-banner" class="result-banner" hidden title="Click to hide"><h2 id="banner-title"></h2><p id="banner-sub"></p></div>
+          <div id="pause-overlay" class="result-banner paused" hidden><h2>Paused</h2><p>Press Esc or click Resume</p><button id="resume-btn" class="button primary">Resume</button></div>
+        </div>
+        <div class="touch-controls" aria-label="Touch controls">
+          <button class="button secondary" data-move="up" aria-label="Move up">↑</button>
+          <button class="button secondary" data-move="left" aria-label="Move left">←</button>
+          <button class="button secondary" data-move="down" aria-label="Move down">↓</button>
+          <button class="button secondary" data-move="right" aria-label="Move right">→</button>
+          <button class="button primary" id="touch-throw" aria-label="Throw">🪨</button>
+        </div>
+        <div class="legend"><span>🟡 +10</span><span>💎 +25</span><span>🔑 key</span><span>🔴 red key (vault door)</span><span>❤️ life</span><span>🌀 portal</span><span>🧰 chest</span><span>🕸️ trap</span><span>🪨 💣 throw with Space</span></div>
+        <div class="button-row">
+          <button id="hint-btn" class="button secondary">Shortest path (−10)</button>
+          <button id="animate-bfs-btn" class="button secondary">Animate BFS</button>
+          <button id="undo-btn" class="button secondary">Undo</button>
+          <button id="restart-btn" class="button primary">New maze</button>
+        </div>
+        <div class="powerup-row">
+          <strong>Power-ups</strong><span id="inventory"></span>
+          <button id="use-reveal-btn" class="button tiny secondary" disabled>👁 Reveal</button>
+          <button id="use-shield-btn" class="button tiny secondary" disabled>🛡 Shield</button>
+          <button id="use-boost-btn" class="button tiny secondary" disabled>⏱ +15s</button>
+          <button id="throw-rock-btn" class="button tiny secondary" disabled>🪨 Rock</button>
+          <button id="throw-bomb-btn" class="button tiny secondary" disabled>💣 Bomb</button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="section-heading"><h2>Level map</h2><label class="inline">Difficulty
+          <select id="difficulty"><option value="easy">Easy explorer</option><option value="normal" selected>Maze runner</option><option value="hard">Nightmare</option></select></label></div>
+        <div id="level-map" class="level-map"></div>
+      </section>
+      <section class="panel">
+        <h2>How to play</h2>
+        <ol class="note">
+          <li>Step on the ⚡ switch to open the 🚧 gate, grab the 🔑 key, then reach the 🚪 exit.</li>
+          <li>You have 3 ❤️ lives. A monster hit costs one and respawns you safely. Lose them all and you die.</li>
+          <li>Monsters: 🟢 chasers (slow, chase when close), 🦇 bats (fast, random), 👹 guardians (protect gems), and a boss on level 5.</li>
+          <li>Face a monster and press <kbd>Space</kbd> to throw a 🪨 rock (stuns) or 💣 bomb (kills, hurts the boss).</li>
+          <li>Find the 🔴 red key to open the vault door. Cracked walls hide secret rooms: walk into them.</li>
+          <li>Collect coins and gems quickly for a combo multiplier. Collect all of them for a +50 treasure bonus.</li>
+        </ol>
+      </section>
+    </section>
+    <aside class="side-column">
+      <section class="panel">
+        <h2>Player</h2>
+        <label for="player-name">Display name (1–30 characters)</label>
+        <input id="player-name" maxlength="30" placeholder="e.g. MazeMaster" autocomplete="nickname">
+        <div class="cosmetic-row">
+          <label>Character <select id="avatar-select"></select></label>
+          <label>Maze color <select id="theme-select"></select></label>
+        </div>
+        <p id="perk-text" class="note"></p>
+        <div class="profile-stats">
+          <div><span>Best score</span><strong id="best-score">0</strong></div>
+          <div><span>Wins</span><strong id="wins">0</strong></div>
+          <div><span>Unlocked</span><strong id="unlocked-level">1</strong></div>
+        </div>
+        <p class="note">Progress is saved in this browser only. Online scores go to Supabase after a win.</p>
+      </section>
+      <section class="panel">
+        <h2>Algorithm Lab</h2>
+        <div class="algorithm-stat"><span>BFS cells explored</span><strong id="bfs-explored">—</strong></div>
+        <div class="algorithm-stat"><span>Shortest path length</span><strong id="path-length">—</strong></div>
+        <div class="algorithm-stat"><span>Merge-sort comparisons</span><strong id="sort-comparisons">—</strong></div>
+        <div class="algorithm-stat"><span>Total moves</span><strong id="lab-moves">0</strong></div>
+        <div class="algorithm-stat"><span>Undo stack size</span><strong id="undo-count">0</strong></div>
+        <div class="algorithm-stat"><span>Monster path length</span><strong id="enemy-path-length">—</strong></div>
+        <p class="note">Every number comes from a real run. BFS uses a queue (FIFO), Undo uses a stack (LIFO), the maze is a 2D array, and merge sort ranks the leaderboard. Comparison counts depend on the data and the implementation.</p>
+      </section>
+      <section class="panel">
+        <div class="section-heading"><h2>Online leaderboard</h2><button id="refresh-leaderboard" class="button tiny secondary">Refresh</button></div>
+        <div class="tabs"><button id="lb-score" class="button tiny primary">Top scores</button><button id="lb-time" class="button tiny secondary">Fastest</button><button id="lb-daily" class="button tiny secondary">Daily</button></div>
+        <p id="leaderboard-status" class="note" role="status">Loading…</p>
+        <ol id="leaderboard" class="leaderboard"></ol>
+      </section>
+      <section id="end-panel" class="panel end-panel" hidden>
+        <h2 id="end-title"></h2>
+        <p id="end-message"></p>
+        <div id="star-result" class="star-result"></div>
+        <p id="end-save" class="note"></p>
+        <button id="submit-score-btn" class="button primary" hidden>Submit score online</button>
+        <button id="next-level-btn" class="button primary" hidden>Next level</button>
+        <button id="play-again-btn" class="button secondary">Play again</button>
+      </section>
+      <section class="panel">
+        <div class="section-heading"><h2>Achievements</h2><span id="achievement-count" class="status-pill">0</span></div>
+        <div id="achievements" class="achievement-grid"></div>
+      </section>
+    </aside>
+  </main>
+  <footer><p>Maze Escape · Data Structures and Algorithms project · HTML, CSS, JavaScript and Supabase</p></footer>
+  <script type="module" src="script.js"></script>
+</body>
+</html>

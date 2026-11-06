@@ -1,0 +1,3 @@
+{ "name": "maze-escape", "private": true, "type": "module",
+  "scripts": { "test": "node tests.mjs", "test:browser": "node tests/browser-tests.mjs" },
+  "devDependencies": { "playwright": "^1.40.0" } }
