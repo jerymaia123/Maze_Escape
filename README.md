@@ -41,6 +41,8 @@ Arrow keys / WASD move · **Space** throw (rocks first, then bombs) · **Z** wit
 
 ## Game features
 - **Monsters:** 🟢 chaser (slow, chases only when you are close), 🦇 bat (fast, random), 👹 guardian (defends a gem), boss on level 5 (3 HP). Throw 🪨 rocks to stun and 💣 bombs to destroy or hurt the boss.
+- **Wide maze, same size:** extra openings, loops and small plazas give you several routes, so you can run around a pillar to lose a monster or take a shortcut to finish faster. Measured on 600 generated mazes (normal difficulty): independent loops per maze rose from 4.5 to 29.7 and the average route to the exit dropped from 58 to 40 steps. The gate, vault and secret rooms stay sealed.
+- **Win and death screens:** buttons for **Next stage**, Replay or Try again, and a **Choose stage** picker (locked stages are disabled). Press Enter for the main button.
 - **Maze extras:** portals (levels 2+), cracked walls that open to secret rooms, a 🔴 red door vault opened by a red key, fog of war on levels 2–5, five themed levels (stone, ice, lava, ruins, void) with torch lighting.
 - **Daily maze:** the same maze for everyone each UTC day (seeded random), with its own leaderboard tab.
 - **Characters with perks:** Wizard (free Reveal), Elf (+12 s), Cat (Shield), Robot (free hints), Fox and Ninja (stealth; Ninja also starts with 2 rocks), Vampire (kills heal), Dragon (4 lives). Unlock by clearing levels, winning 3 or 8 times, or winning without losing a life.
@@ -57,9 +59,9 @@ Arrow keys / WASD move · **Space** throw (rocks first, then bombs) · **Z** wit
 
 **Merge sort** (leaderboard): split in half, sort both halves, merge by repeatedly taking the better front item (ties take the left one, so it is stable). Score ranking: higher score, fewer moves, faster time. The Fastest tab uses the same sort with a different comparison. Time O(n log n), space O(n). The comparison count in the Algorithm Lab comes from the real run and depends on the data.
 
-## Test results (executed 2026-11-04)
+## Test results (executed 2026-11-06 after the wider-maze change)
 - `node tests.mjs`: **18 of 18 passed** (stack, queue, BFS, merge sort cases, fastest ranking, combo, seeded daily maze, and 300 generated mazes checked for: no loot behind the exit, gate truly blocks, key/switch/red key reachable first, secret and vault rooms sealed, monsters spawn at least 8 steps away).
-- `node tests/browser-tests.mjs` (needs `npm i playwright` and a running local server): **42 of 42 checks passed in real Chromium with no page errors**, covering: title and pause, a bot completing a level (win banner, recorded time, saved progress, achievement, character unlock, no score change after the game ends), death by monster, losing a life without restarting, time-up, undo, rocks, bombs and the boss, portal, secret wall, red door, deterministic daily maze, leaderboard ranking with a mocked Supabase (score, fastest and daily tabs, avatar, merge-sort count, insert payload and the missing-column retry), all five levels, and a phone-sized screen.
+- `node tests/browser-tests.mjs` (needs `npm i playwright` and a running local server): **47–48 checks passed in real Chromium with no page errors** (one check only runs when the red-door cell has an open neighbour), covering the win-screen stage picker, Next stage, Enter shortcut, Try again, plus: title and pause, a bot completing a level (win banner, recorded time, saved progress, achievement, character unlock, no score change after the game ends), death by monster, losing a life without restarting, time-up, undo, rocks, bombs and the boss, portal, secret wall, red door, deterministic daily maze, leaderboard ranking with a mocked Supabase (score, fastest and daily tabs, avatar, merge-sort count, insert payload and the missing-column retry), all five levels, and a phone-sized screen.
 - **Not verified:** sound was checked only for errors (no audio device), gamepad input was not tested with real hardware, and a live Supabase project has not been tested (a mocked one was used). Please also play it yourself on a phone.
 
 ## Known limitations and ideas

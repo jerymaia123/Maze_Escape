@@ -294,7 +294,18 @@ function startTimer() {
 function setPaused(v) {
   if (!game?.active) return; game.paused = v; $("pause-overlay").hidden = !v; $("pause-btn").textContent = v ? "▶ Resume" : "⏸ Pause"; hud();
 }
-function showBanner(title, sub, cls) { $("result-banner").className = `result-banner ${cls}`; $("banner-title").textContent = title; $("banner-sub").textContent = sub; $("result-banner").hidden = false; }
+// Buttons on the win/death screen: next stage, replay, and a stage picker (only unlocked stages can be chosen).
+function bannerActions(won) {
+  const box = $("banner-actions"), lvl = game.level, daily = game.daily; box.replaceChildren();
+  const add = (parent, label, cls, fn, disabled = false) => { const b = document.createElement("button"); b.className = `button ${cls}`; b.textContent = label; b.disabled = disabled; b.addEventListener("click", fn); parent.append(b); return b; };
+  if (won && !daily && lvl < 5) add(box, "Next stage ▶", "primary", () => newGame(lvl + 1));
+  if (won && !daily && lvl === 5) { const m = document.createElement("p"); m.textContent = "🎉 You cleared every stage!"; box.append(m); }
+  add(box, won ? "Replay stage" : "Try again", won && (daily || lvl === 5) ? "primary" : "secondary", () => (daily ? newGame(2, { daily: true }) : newGame(lvl)));
+  const row = document.createElement("div"), label = document.createElement("span"); row.className = "stage-pick"; label.textContent = "Choose stage:"; row.append(label);
+  for (let n = 1; n <= 5; n++) add(row, n <= progress.unlocked ? String(n) : `🔒${n}`, !daily && n === lvl ? "primary tiny" : "secondary tiny", () => newGame(n), n > progress.unlocked);
+  box.append(row);
+}
+function showBanner(title, sub, cls) { $("result-banner").className = `result-banner ${cls}`; $("banner-title").textContent = title; $("banner-sub").textContent = sub; $("result-banner").hidden = false; $("result-banner").scrollIntoView?.({ block: "center", behavior: "smooth" }); }
 const unlockedList = () => AVATARS.filter((a) => a[2]()).map((a) => a[0]);
 function finish(won) {
   if (!game.active) return;                       // points can never change after the game ends
@@ -316,14 +327,14 @@ function finish(won) {
     $("star-result").innerHTML = [1, 2, 3].map((n) => `<span class="${n <= game.stars ? "" : "empty"}">★</span>`).join("");
     if (fresh.length) toast(`New character unlocked: ${fresh.join(" ")}`);
     if (!game.daily && game.level < 5) $("next-level-btn").hidden = false;
-    showBanner("🏆 YOU WIN!", `Finished in ${formatTime(game.elapsed)} · ${game.score} points`, "win");
+    showBanner("🏆 YOU WIN!", `Finished in ${formatTime(game.elapsed)} · ${game.score} points${!game.daily && game.level < 5 ? " · Enter = next stage" : ""}`, "win"); bannerActions(true);
     say("You win! You escaped the maze."); audio.play("win"); view.confetti(); view.slowmo(700); submitScore();
   } else {
     const died = game.cause === "monster";
     $("end-title").textContent = died ? "You died" : "Time is up";
     $("end-message").textContent = `You survived ${formatTime(game.elapsed)}, with ${game.got.coins} coins and ${game.got.gems} gems. Try again: the maze is new every time.`;
     $("star-result").textContent = "";
-    showBanner(died ? "💀 YOU DIED" : "⏰ TIME'S UP", died ? "A monster took your last life." : "The maze swallowed you.", died ? "died" : "timeup");
+    showBanner(died ? "💀 YOU DIED" : "⏰ TIME'S UP", died ? "A monster took your last life." : "The maze swallowed you.", died ? "died" : "timeup"); bannerActions(false);
     say(died ? "You died." : "Time ran out."); audio.play("die"); view.slowmo(900);
   }
   hud();
@@ -334,7 +345,7 @@ async function submitScore() {
   if (!game?.won || game.submitted || submitting) return;      // at most one saved score per completed game
   const name = $("player-name").value.trim(), status = $("end-save"), btn = $("submit-score-btn");
   status.textContent = `Local result only: ${game.score} points (not saved online yet).`; btn.hidden = false;
-  if (!NAME_RULE.test(name)) { status.textContent += " Enter a display name (1–30 letters, numbers, space _ . -), then press Submit."; $("player-name").focus(); return; }
+  if (!NAME_RULE.test(name)) { status.textContent += " Enter a display name (1–30 letters, numbers, space _ . -), then press Submit."; return; }
   if (!supabase) { status.textContent += " Online scores are unavailable (Supabase is not configured or could not load)."; return; }
   submitting = true; btn.disabled = true;
   try {
@@ -414,6 +425,7 @@ document.addEventListener("keydown", (e) => {
   if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
   const k = e.key.toLowerCase();
   if (!$("title-screen").hidden) { if (k === "enter" || k === " ") { e.preventDefault(); play(); } return; }
+  if (game && !game.active && !$("result-banner").hidden && k === "enter") { e.preventDefault(); $("banner-actions").querySelector("button:not(:disabled)")?.click(); return; }   // Enter = main button
   if (KEYS[k]) { e.preventDefault(); tryMove(...KEYS[k]); }
   else if (k === " " || k === "f") { e.preventDefault(); throwItem(); }
   else if (k === "escape" || k === "p") { e.preventDefault(); setPaused(!game?.paused); }
@@ -454,7 +466,7 @@ click("play-again-btn", () => game?.daily ? newGame(1) : newGame(game?.level || 
 click("next-level-btn", () => newGame(Math.min(5, game.level + 1)));
 click("use-reveal-btn", () => usePowerup("reveal")); click("use-shield-btn", () => usePowerup("shield")); click("use-boost-btn", () => usePowerup("boost"));
 click("throw-rock-btn", () => throwItem("rock")); click("throw-bomb-btn", () => throwItem("bomb"));
-click("submit-score-btn", submitScore); click("refresh-leaderboard", loadLeaderboard); click("result-banner", () => { $("result-banner").hidden = true; });
+click("submit-score-btn", submitScore); click("refresh-leaderboard", loadLeaderboard); $("result-banner").addEventListener("click", (e) => { if (!e.target.closest("button")) $("result-banner").hidden = true; });
 for (const [id, mode] of [["lb-score", "score"], ["lb-time", "time"], ["lb-daily", "daily"]]) click(id, () => { boardMode = mode; loadLeaderboard(); });
 $("difficulty").addEventListener("change", () => newGame(game?.daily ? 1 : game?.level || 1));
 $("avatar-select").addEventListener("change", () => { progress.avatar = $("avatar-select").value; saveProgress(); });

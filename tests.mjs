@@ -47,7 +47,6 @@ test("T18", "Generated mazes: loot never behind exit, gate blocks, pockets seale
   }
   return bad;
 });
-
 console.table(rows);
 const failed = rows.filter(r => r.result === "FAIL").length;
 console.log(failed ? `${failed} test(s) FAILED` : `All ${rows.length} tests passed`);

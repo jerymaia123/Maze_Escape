@@ -118,3 +118,11 @@ label.inline{display:flex;align-items:center;gap:.5rem;margin:0}label.inline sel
 .accent{color:#24141f;background:#e7a6b5;border-color:#ffd0da}
 
 @media(max-width:650px){.stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:.4rem}.stat-card{padding:.45rem}.stat-card span{font-size:.62rem}.stat-card strong{font-size:.95rem;margin-top:.15rem}.topbar h1{font-size:2rem}.header-actions .button{padding:.45rem .55rem;font-size:.72rem}.volume input{width:70px}}
+
+.banner-actions{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;align-items:center;margin-top:.9rem}
+.banner-actions p{width:100%;margin:0;color:var(--gold)}
+.stage-pick{display:flex;gap:.35rem;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.stage-pick span{color:var(--muted);font-size:.78rem;margin-right:.2rem}
+@media(max-width:650px){.result-banner h2{font-size:clamp(1.6rem,9vw,2.4rem)}.banner-actions{margin-top:.5rem}}
+
+.toast{top:1rem;bottom:auto}

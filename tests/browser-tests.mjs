@@ -14,7 +14,7 @@ async function fresh(opts = {}) {
     const { bfs } = await import("/algorithms.js"); const { C, BLOCKED, inBounds } = await import("/levels.js");
     window.__find = (code) => { const g = __maze.game; for (let r = 0; r < g.size; r++) for (let c = 0; c < g.size; c++) if (g.grid[r][c] === code) return { row: r, col: c }; return null; };
     window.__bot = (target) => { const g = __maze.game; const goal = target || (!g.switchOn ? __find(C.SWITCH) : !g.hasKey ? __find(C.KEY) : g.exit); if (!goal) return null;
-      const r = bfs(g.player, goal, (p) => inBounds(g.grid, p) && !BLOCKED.has(g.grid[p.row][p.col]) && !(target && p.row === g.exit.row && p.col === g.exit.col)); if (!r.path.length) return null; const s = r.path[0]; return [s.row - g.player.row, s.col - g.player.col]; };
+      const r = bfs(g.player, goal, (p) => inBounds(g.grid, p) && !BLOCKED.has(g.grid[p.row][p.col]) && !(target && p.row === g.exit.row && p.col === g.exit.col && !(p.row === target.row && p.col === target.col))); if (!r.path.length) return null; const s = r.path[0]; return [s.row - g.player.row, s.col - g.player.col]; };
     window.__C = C;
   });
   return { ctx, page };
@@ -65,8 +65,8 @@ async function botWin(page) { for (let i = 0; i < 500; i++) { if (!(await page.e
 // ---------- 3. death by monster ----------
 {
   const { page, ctx } = await fresh();
-  await page.click("#play-btn"); await page.evaluate(() => { const g = __maze.game; g.lives = 1; g.grid[g.gate.row][g.gate.col] = 0; });
-  for (let i = 0; i < 400 && (await page.evaluate(() => __maze.game.active)); i++) {
+  await page.click("#play-btn"); await page.evaluate(() => { const g = __maze.game; g.lives = 1; g.grid[g.gate.row][g.gate.col] = 0; g.grid.forEach((row) => row.forEach((v, c) => { if (v === 12) row[c] = 0; })); });
+  for (let i = 0; i < 700 && (await page.evaluate(() => __maze.game.active)); i++) {
     const d = await page.evaluate(() => { const g = __maze.game, e = g.enemies[0]; return __bot({ row: e.row, col: e.col }); }); if (!d) break;
     await page.keyboard.press(KEY(d)); await page.waitForTimeout(85);
   }
@@ -100,7 +100,7 @@ async function botWin(page) { for (let i = 0; i < 500; i++) { if (!(await page.e
 {
   const { page, ctx } = await fresh({ storage: { unlocked: 5 } });
   await page.click("#play-btn");
-  await page.evaluate(() => document.querySelectorAll(".level-card")[4].click()); await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelectorAll(".level-card")[4].click()); await page.waitForTimeout(300); await page.evaluate(() => { __maze.game.grace = 999; });
   check("level 5 starts with a boss and bombs", await page.evaluate(() => __maze.game.level === 5 && __maze.game.enemies.some((e) => e.type === "boss")));
   // place a coin right next to the player, collect it, undo
   const r = await page.evaluate(() => { const g = __maze.game; const nb = [[0, 1], [1, 0]].map(([a, b]) => ({ row: g.player.row + a, col: g.player.col + b })).find((p) => g.grid[p.row][p.col] === 0); g.grid[nb.row][nb.col] = __C.COIN; return nb; });
@@ -131,6 +131,7 @@ async function botWin(page) { for (let i = 0; i < 500; i++) { if (!(await page.e
   const { page, ctx } = await fresh({ storage: { unlocked: 5 } });
   await page.click("#play-btn");
   for (let tries = 0; tries < 12; tries++) { await page.evaluate(() => document.querySelectorAll(".level-card")[2].click()); await page.waitForTimeout(150); if (await page.evaluate(() => !!(__maze.game.secret && __maze.game.vault && __maze.game.portals.length === 2))) break; }
+  await page.evaluate(() => { __maze.game.grace = 999; });
   const info = await page.evaluate(() => { const g = __maze.game; return { portals: g.portals.length, vault: !!g.vault, secret: !!g.secret }; });
   check("level 3 has portals, vault and secret room", info.portals === 2 && info.vault && info.secret, JSON.stringify(info));
   // portal: stand next to portal A, walk in
@@ -201,6 +202,37 @@ async function botWin(page) { for (let i = 0; i < 500; i++) { if (!(await page.e
   check("mobile touch controls visible", await m.page.isVisible(".touch-controls"));
   const ow = await m.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2); check("no horizontal scroll on mobile", ow);
   await m.ctx.close();
+}
+// ---------- 11. win/death screen: next stage, replay, stage picker ----------
+{
+  const { page, ctx } = await fresh({ storage: { unlocked: 1 } });
+  await page.click("#play-btn"); await page.evaluate(() => { __maze.game.lives = 50; }); await botWin(page); await page.waitForTimeout(700);
+  const labels = await page.$$eval("#banner-actions button", (bs) => bs.map((b) => ({ t: b.textContent.trim(), d: b.disabled })));
+  check("win screen offers Next stage and Replay", labels.some((b) => /Next stage/.test(b.t)) && labels.some((b) => /Replay/.test(b.t)), labels.map((b) => b.t).join(" | "));
+  const pick = labels.filter((b) => /^(🔒)?\d$/.test(b.t));
+  check("stage picker lists 5 stages; locked ones are disabled", pick.length === 5 && pick.filter((b) => !b.d).length === 2, pick.map((b) => b.t + (b.d ? "x" : "")).join(" "));
+  await page.screenshot({ path: "./tests/out-winbanner.png" });
+  await page.keyboard.press("Enter"); await page.waitForTimeout(400);
+  check("Enter on the win screen starts the next stage", (await page.evaluate(() => __maze.game.level)) === 2 && !(await page.isVisible("#result-banner")));
+  await ctx.close();
+}
+{
+  const { page, ctx } = await fresh({ storage: { unlocked: 5 } });
+  await page.click("#play-btn"); await page.evaluate(() => { __maze.game.lives = 50; }); await botWin(page); await page.waitForTimeout(700);
+  await page.locator("#banner-actions .stage-pick button", { hasText: /^4$/ }).click(); await page.waitForTimeout(400);
+  check("picking stage 4 on the win screen starts level 4", (await page.evaluate(() => __maze.game.level)) === 4 && (await page.evaluate(() => __maze.game.active)));
+  await ctx.close();
+}
+{
+  const { page, ctx } = await fresh({ storage: { unlocked: 3 } });
+  await page.click("#play-btn"); await page.evaluate(() => { const g = __maze.game; g.lives = 1; g.grid[g.gate.row][g.gate.col] = 0; g.grid.forEach((row) => row.forEach((v, c) => { if (v === 12) row[c] = 0; })); });
+  for (let i = 0; i < 700 && (await page.evaluate(() => __maze.game.active)); i++) { const d = await page.evaluate(() => { const g = __maze.game, e = g.enemies[0]; return __bot({ row: e.row, col: e.col }); }); if (!d) break; await page.keyboard.press(KEY(d)); await page.waitForTimeout(85); }
+  await page.waitForTimeout(600);
+  const txt = await page.textContent("#banner-actions");
+  check("death screen offers Try again and stage picker", /Try again/.test(txt) && /Choose stage/.test(txt));
+  await page.locator("#banner-actions button", { hasText: /Try again/ }).click(); await page.waitForTimeout(300);
+  check("Try again starts a fresh run with full lives", await page.evaluate(() => __maze.game.active && __maze.game.lives === 3 && __maze.game.level === 1));
+  await ctx.close();
 }
 await browser.close();
 const failed = results.filter((r) => !r.ok);

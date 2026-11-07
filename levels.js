@@ -43,12 +43,12 @@ function tryBuild(level, difficulty, strict, rand) {
   braid(grid, size, { easy: 0.8, normal: 0.6, hard: 0.4 }[difficulty], rand);
   const start = { row: 1, col: 1 };
   const notWall = (p) => inBounds(grid, p) && grid[p.row][p.col] !== C.WALL;
-  const order = bfs(start, null, notWall).explored, total = order.length;       // every open cell, nearest first
+  let order = bfs(start, null, notWall).explored, total = order.length;         // every open cell, nearest first
   const without = (c) => bfs(start, null, (p) => notWall(p) && !same(p, c)).explored;
   const safe = (c) => without(c).length === total - 1;                          // removing c disconnects nothing
   // The exit sits at the end of a branch (never in the middle), so no loot can be stranded behind it.
   const exit = shuffle(order.slice(Math.floor(total * 0.7)), rand).find(safe) || order[total - 1];
-  const route = bfs(start, exit, notWall).path;
+  let route = bfs(start, exit, notWall).path;
   let gate = null;                                                              // a true chokepoint on the way to the exit
   if (strict) { for (let i = Math.floor(route.length * 0.45); i < route.length - 2 && !gate; i++) if (!bfs(start, exit, (p) => notWall(p) && !same(p, route[i])).found) gate = route[i]; }
   else gate = route[Math.floor(route.length * 0.6)];
@@ -69,9 +69,29 @@ function tryBuild(level, difficulty, strict, rand) {
   const vault = level >= 2 ? pocket(3, 12) : null, secret = level >= 2 ? pocket(1, 8) : null;
   const locked = new Set();
   for (const v of [vault, secret]) if (v) { locked.add(posKey(v.door)); v.cells.forEach((p) => locked.add(posKey(p))); }
-  const before = bfs(start, null, (p) => notWall(p) && !same(p, gate) && !locked.has(posKey(p))).explored;   // reachable before the gate
-  const all = order.filter((p) => !locked.has(posKey(p)));
+  const reachBefore = () => bfs(start, null, (p) => notWall(p) && !same(p, gate) && !locked.has(posKey(p))).explored;
+  let before = reachBefore();
   if (before.length < 20) return null;
+
+  // WIDEN the map without making it bigger: open extra walls (loops, shortcuts and small plazas) so there is always another
+  // way around when a monster follows you. Walls are only opened INSIDE one section: never between the area before the gate
+  // and the area after it, and never next to the gate, a vault or a secret room, so those puzzles stay intact.
+  const beforeSet = new Set(before.map(posKey)), beyondSet = new Set(order.filter((p) => !beforeSet.has(posKey(p)) && !locked.has(posKey(p)) && !same(p, gate)).map(posKey));
+  const region = (p) => (beforeSet.has(posKey(p)) ? 1 : beyondSet.has(posKey(p)) ? 2 : 0);
+  const walls = [];
+  for (let r = 1; r < size - 1; r++) for (let c = 1; c < size - 1; c++) if (grid[r][c] === C.WALL) walls.push({ row: r, col: c });
+  let extra = Math.round(total * { easy: 0.16, normal: 0.13, hard: 0.1 }[difficulty]);
+  for (const w of shuffle(walls, rand)) {
+    if (extra <= 0) break;
+    const open = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => ({ row: w.row + dr, col: w.col + dc })).filter(notWall);
+    if (open.length < 2) continue;
+    const regs = new Set(open.map(region));
+    if (regs.has(0) || regs.size !== 1) continue;
+    grid[w.row][w.col] = C.OPEN; (regs.has(1) ? beforeSet : beyondSet).add(posKey(w)); extra--;
+  }
+  order = bfs(start, null, notWall).explored; total = order.length; route = bfs(start, exit, notWall).path;      // shortcuts changed the distances
+  before = reachBefore();
+  const all = order.filter((p) => !locked.has(posKey(p)));
 
   grid[exit.row][exit.col] = C.EXIT; grid[gate.row][gate.col] = C.GATE;
   if (vault) grid[vault.door.row][vault.door.col] = C.RDOOR;
